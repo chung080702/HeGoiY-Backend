@@ -57,6 +57,10 @@ def getMetadata():
         if roomServicesQuery:
             roomServices = [{"id": row[0], "name": row[1]} for row in roomServicesQuery]
        
+        roomFacilities = []
+        roomFacilitiesQuery = execute_query(connection, "SELECT * FROM room_facilities")
+        if roomFacilitiesQuery:
+            roomFacilities = [{"id": row[0], "name": row[1]} for row in roomFacilitiesQuery]
 
         hotelServices = []
         hotelServicesQuery = execute_query(connection, "SELECT * FROM hotel_features")
@@ -71,7 +75,7 @@ def getMetadata():
         if roomViewsQuery:
             roomViews = [row[0] for row in roomViewsQuery]
 
-        return jsonify({'roomServices':roomServices, 'hotelServices': hotelServices, 'bedTypes':bedTypes,'roomViews':roomViews})
+        return jsonify({'roomServices':roomServices, 'hotelServices': hotelServices, 'bedTypes':bedTypes,'roomViews':roomViews,'roomFacilities': roomFacilities})
     except:
         return jsonify({'error': 'Server Error'}), 400  # Bad Request
 
