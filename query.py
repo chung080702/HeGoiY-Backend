@@ -81,7 +81,12 @@ class Parameter:
  
 
 class SQLCompiler:
-    _BASE_SQL = """CREATE TABLE topsis_data AS
+    _BASE_SQL = """
+DROP TABLE IF EXISTS topsis_data;
+
+DROP TABLE IF EXISTS topsis_calculated;
+
+CREATE TABLE topsis_data AS
 (
 SELECT hotel_id, room_score+:k_epsilon as room_score, distance+:k_epsilon as distance, service_count+:k_epsilon as service_count, abs(star_rating - :request_star)+:k_epsilon as star_rating
 FROM
@@ -95,7 +100,7 @@ FROM
             COALESCE(facility, 0)* :s_fa + 
             COALESCE(feature, 0) * :s_fe +
             view_match * :s_vi +
-            atan(price * :s_pr)/PI()  +
+            price * :s_pr +
             single_bed * :s_bed_si +
             double_bed * :s_bed_do +
             sofa_bed * :s_bed_so +
@@ -123,8 +128,8 @@ FROM
                 COALESCE(abs(r.japanese_futon  - :request_japanese),0) as japanese_futon,
               (
                     case
-                    when aprice < :request_price_low then :request_price_low - aprice
-                    when aprice > :request_price_high then (aprice - :request_price_high)
+                    when aprice < :request_price_low then 1/(:request_price_low - aprice + 1)
+                    when aprice > :request_price_high then 1/(aprice - :request_price_high + 1)
                     else 0
                     end
                 ) as price 
@@ -233,7 +238,7 @@ LEFT JOIN
             COALESCE(facility, 0)* :s_fa + 
             COALESCE(feature, 0) * :s_fe +
             view_match * :s_vi +
-            atan(price * :s_pr)/PI()  +
+            price * :s_pr  +
             single_bed * :s_bed_si +
             double_bed * :s_bed_do +
             sofa_bed * :s_bed_so +
@@ -261,9 +266,9 @@ LEFT JOIN
                 COALESCE(abs(r.japanese_futon  - :request_japanese),0) as japanese_futon,
               (
                     case
-                    when aprice < :request_price_low then :request_price_low - aprice
-                    when aprice > :request_price_high then (aprice - :request_price_high)
-                    else 0
+                    when aprice < :request_price_low then 1-(:request_price_low - aprice+1)
+                    when aprice > :request_price_high then 1-(aprice - :request_price_high+1)
+                    else 1
                     end
                 ) as price 
             FROM 
@@ -312,15 +317,12 @@ LEFT JOIN
 ) kkk
 ON kkk.id = rnk.hotel_id;
 
-drop TABLE topsis_data;
-
-drop TABLE topsis_calculated
 """
     def __init__(self):
         self.st = []
         self.ed = []
         self.words = []
-        for match in re.finditer("(:[^ \\),]+)[ \\),]", self._BASE_SQL):
+        for match in re.finditer("(:[^ \\),\\+]+)[ \\),\\+]", self._BASE_SQL):
             self.st.append(match.start(1))
             self.ed.append(match.end(1))
             self.words.append(match.group(1)[1:])
@@ -335,4 +337,7 @@ drop TABLE topsis_calculated
         out += self._BASE_SQL[last:]
         return out
 
-
+#p = Parameter()
+#p.s_topsis_services = 1000
+#p.request_hotel_feature="1,2,3"
+#print(SQLCompiler().compile(p))

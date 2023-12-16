@@ -55,9 +55,9 @@ def index():
 
         execute_query(connection, queries[0])
         execute_query(connection, queries[1])
-        result = execute_query(connection, queries[2])
+        execute_query(connection, queries[2])
         execute_query(connection, queries[3])
-        execute_query(connection, queries[4])
+        result = execute_query(connection, queries[4])
         
         hotels = []
         if result:
@@ -65,10 +65,56 @@ def index():
             for hotel in hotels:
                 hotel["rooms"] = []
                 for roomId in hotel["roomIds"]:
-                    roomResult = execute_query(connection, f"SELECT * FROM rooms WHERE id={roomId}")
-                   
                     
-            return jsonify({"hotels": result})
+                    roomResult = execute_query(connection, f""" 
+                    SELECT * from 
+                    (   SELECT * 
+                        from rooms r
+                        WHERE r.id = {roomId}
+                    ) r 
+                    LEFT JOIN
+                    (   SELECT r.id, GROUP_CONCAT(rf.name) as service_names  
+                        FROM rooms r, room_feature_relations rfr, room_features rf  
+                        WHERE r.id = {roomId} && r.id = rfr.room_id AND rf.id = rfr.feature_id AND rfr.feature_id in ({p.request_room_service}) 
+                        GROUP BY r.id
+                    ) s
+                    ON r.id = s.id
+                    LEFT JOIN 
+                    (   SELECT r.id, GROUP_CONCAT(rf.name) as facilities_names 
+                        FROM rooms r, room_facility_relations rfr, room_facilities rf  
+                        WHERE r.id = {roomId} && r.id = rfr.room_id AND rf.id = rfr.facility_id AND rfr.facility_id in ({p.request_room_facility}) 
+                        GROUP BY r.id
+                    ) f
+                    ON r.id = f.id""")
+                    
+                    if roomResult:
+                        row = roomResult[0]
+                        
+                        room =  {
+                                "id": row[0] or 'NULL',
+                                "view": row[3] or 'NULL',
+                                "beds": {
+                                    "single_bed": row[4] or 'NULL',
+                                    "king_bed":row[7] or 'NULL',
+                                    "double_bed":row[8] or 'NULL',
+                                    "queen_bed":row[9] or 'NULL',
+                                    "super_king_bed":row[12] or 'NULL',
+                                    "semi_double_bed":row[13]or 'NULL',
+                                    "sofa_bed":row[14] or 'NULL',
+                                    "bunk_bed":row[15] or 'NULL',
+                                    "japanese_futon":row[16] or 'NULL',
+                                },
+                                "cheapest_price":row[5] or 'NULL',
+                                "before_discount_price":row[6] or 'NULL',
+                                "services": row[18].split(',') if row[18] else  'NULL',
+                                "facilities": row[20].split(',') if row[20] else 'NULL'
+                            }
+                        
+                        hotel["rooms"].append(room)
+                  
+                    
+                    
+            return jsonify({"hotels": hotels})
         else:
             return jsonify({"message":  "No hotel"})
     except:
