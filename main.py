@@ -1,6 +1,6 @@
 # app.py
 from flask import Flask, jsonify, request
-from database import connect_to_mysql, execute_query
+from database import connect_to_mysql, execute_query, SQLCompiler, Parameter
 
 host = 'localhost' 
 port = 3306  
@@ -24,27 +24,64 @@ def index():
         hotelServices = data["hotelServices"]
         roomView = data["roomView"]
         beds = data["beds"]
-        score = data["score"]
+        star = data["star"]
 
-        print(latitude)
-        print(longitude)
-        print(priceStart)
-        print(priceEnd)
-        print(roomServices)
-        print(roomFacilities)
-        print(hotelServices)
-        print(roomView)
-        print(beds)
-        print(score)
-
-        query = "SELECT * FROM hotels LIMIT 5"
-        result = execute_query(connection, query)
+        s = SQLCompiler()
+        p = Parameter() 
         
+        p.request_view = str(roomView)
+        p.request_double_bed = str(beds.get("double_bed",'NULL'))
+        p.request_single_bed = str(beds.get("single_bed",'NULL'))
+        p.request_sofa_bed = str(beds.get("sofa_bed",'NULL'))
+        p.request_king_bed = str(beds.get("king_bed",'NULL'))
+        p.request_queen_bed = str(beds.get("queen_bed",'NULL'))
+        p.request_super_king_bed =  str(beds.get("super_king_bed",'NULL'))
+        p.request_semi_double_bed =  str(beds.get("semi_double_bed",'NULL'))
+        p.request_bunk_bed = str(beds.get("bunk_bed",'NULL'))
+        p.request_japanese =  str(beds.get("japanese_futon",'NULL'))
+        p.request_price_low = priceStart
+        p.request_price_high = priceEnd
+        p.request_room_facility = ','.join(map(str, roomFacilities)) if len(roomFacilities) > 0 else 'NULL'
+        p.request_room_service =  ','.join(map(str, roomServices)) if len(roomServices) > 0 else 'NULL'
+        p.request_longtitude = str(longitude)
+        p.request_latitude = str(latitude)
+        p.request_hotel_feature = ','.join(map(str, hotelServices)) if len(hotelServices) > 0 else 'NULL'
+        p.request_star = str(star)
+
+        print(p.request_view)
+        print(p.request_double_bed)
+        print(p.request_single_bed)
+        print(p.request_sofa_bed)
+        print(p.request_king_bed)
+        print(p.request_queen_bed)
+        print(p.request_super_king_bed)
+        print(p.request_semi_double_bed)
+        print(p.request_bunk_bed)
+        print(p.request_japanese)
+        print(p.request_price_low)
+        print(p.request_price_high)
+        print(p.request_room_facility)
+        print(p.request_room_service)
+        print(p.request_longtitude)
+        print(p.request_latitude)
+        print(p.request_hotel_feature)
+        print(p.request_star)
+
+        p.processSpecial()
+        query = s.compile(p)
+        queries = query.split(';')
+
+        execute_query(connection, queries[0])
+        execute_query(connection, queries[1])
+        result = execute_query(connection, queries[2])
+        
+        print(len(queries))
+
         if result:
-            hotels = [{"id": row[0], "star_rating": row[1], "address": row[2]} for row in result]
-            return jsonify({"hotels": hotels})
+            print(result)
+            return jsonify({"hotels": result})
         else:
-            return jsonify({"message": "No hotels found."})
+            return jsonify({"message":  "No hotel"})
     except:
         return jsonify({'error': 'Invalid JSON data'}), 400  # Bad Request
 
@@ -68,7 +105,7 @@ def getMetadata():
             hotelServices = [{"id": row[0], "name": row[1]} for row in hotelServicesQuery]
         
 
-        bedTypes = ["single_bed","double_bed","sofa_bed","king_bed","king_bed","queen_bed","super_king_bed","semi_double_bed","bunk_bed","japanese_futon"]
+        bedTypes = ["single_bed","double_bed","sofa_bed","king_bed","queen_bed","super_king_bed","semi_double_bed","bunk_bed","japanese_futon"]
 
         roomViews = []
         roomViewsQuery = execute_query(connection, "SELECT DISTINCT view FROM rooms")
@@ -81,7 +118,7 @@ def getMetadata():
 
 if __name__ == '__main__':
     connection = connect_to_mysql(host, port, user, password, database)
-    res = execute_query(connection,"")
+    
     app.run(debug=True, port=8000)
     
     connection.close()

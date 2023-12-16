@@ -2,8 +2,8 @@
 version: '3'
 
 services:
-  mysql:
-    image: mysql:latest
+  mariadb:
+    image: mariadb:latest
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: my_database

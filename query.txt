@@ -1,0 +1,96 @@
+SELECT *
+FROM
+(
+	SELECT hotel_id, sum(score * owa_weight.v) as room_score, GROUP_CONCAT(CONVERT(dd.id, char(50))) as room_list
+	FROM 
+	(
+		SELECT 
+			aa.id as id, 
+			hotel_id, 
+			COALESCE(facility, 0)* :s_fa + 
+			COALESCE(feature, 0) * :s_fe +
+			view_match * :s_vi +
+			price * :s_pr +
+			single_bed * :s_bed_si +
+			double_bed * :s_bed_do +
+			sofa_bed * :s_bed_so +
+			king_bed * :s_bed_ki +
+			queen_bed * :s_bed_qu +
+			super_king_bed * :s_bed_su +
+			semi_double_bed * :s_bed_se +
+			bunk_bed * :s_bed_bu +
+			japanese_futon * :s_jap as score,
+			ROW_NUMBER() over (PARTITION by hotel_id ORDER BY score) as groupRow
+		FROM
+		(
+			SELECT 
+				r.id, 
+				r.hotel_id, 
+				COALESCE(r.`view` = :request_view, 0) as view_match,
+				COALESCE(abs(r.double_bed  - :request_double_bed),0) as double_bed,
+				COALESCE(abs(r.single_bed  - :request_single_bed),0) as single_bed,
+				COALESCE(abs(r.sofa_bed  - :request_sofa_bed),0) as sofa_bed,
+				COALESCE(abs(r.king_bed  - :request_king_bed),0) as king_bed,
+				COALESCE(abs(r.queen_bed  - :request_queen_bed),0) as queen_bed,
+				COALESCE(abs(r.super_king_bed  - :request_king_bed),0) as super_king_bed,
+				COALESCE(abs(r.semi_double_bed  - :request_semi_double_bed),0) as semi_double_bed,
+				COALESCE(abs(r.bunk_bed  - :request_bunk_bed),0) as bunk_bed,
+				COALESCE(abs(r.japanese_futon  - :request_japanese),0) as japanese_futon,
+		      (
+					case
+					when aprice < :request_price_low then :request_price_low - aprice
+					when aprice > :request_price_high then (aprice - :request_price_high)
+					else 0
+					end
+				) as price 
+			FROM 
+			(
+				SELECT *, :k_price_low * r.cheapest_price + (1-:k_price_low) * r.before_discount_price as aprice FROM rooms r
+			) r
+		) aa 
+		left join 
+		(
+			SELECT r.id, COUNT(*) as facility
+			FROM room_facility_relations rfr , rooms r 
+			WHERE 
+			r.id  = rfr.room_id AND 
+			rfr.facility_id in (:request_room_facility) 
+			GROUP BY r.id
+		) bb
+		on aa.id = bb.id
+		LEFT JOIN
+		(
+			SELECT r.id, COUNT(*) as feature
+			FROM room_feature_relations rfr, rooms r
+			WHERE 
+			r.id  = rfr.room_id AND 
+			rfr.feature_id  in (:request_room_service) 
+			GROUP BY r.id
+		) cc
+		on aa.id = cc.id
+		order by hotel_id, score
+	) dd
+	LEFT JOIN 
+		owa_weight
+	ON owa_weight.id = dd.groupRow
+	GROUP BY hotel_id
+) ee 
+LEFT JOIN
+(
+	SELECT hh.id, 6371000*2*ATAN2(SQRT(a)*SQRT(1-a)) as distance, COALESCE(cnt, 0) as service_count, name, address, star_rating, hotelServices FROM (
+		SELECT id, sin(delta_lat/2)*sin(delta_lat/2) + cos(lat1)*cos(lat2) * sin(delta_lon/2) * sin(delta_lon/2) as a, name, address, star_rating from (
+			SELECT id, lat1, lat2, lat1 - lat2 as delta_lat, lot1 - lot2 as delta_lon, name, address, star_rating from (
+				SELECT id, latitude/360 as lat1, longitude/360 as lot1, :lon /360 as lot2, :lat /360 as lat2, star_rating, address, name FROM hotels h
+			) k
+		) l
+	) hh
+	LEFT JOIN
+	(
+		SELECT h.id, COUNT(hfr.feature_id) as cnt, GROUP_CONCAT(hf.name) as hotelServices
+		from hotels h, hotel_feature_relations hfr, hotel_features hf  
+		WHERE hfr.hotel_id  = h.id AND hfr.feature_id in (:s) AND hfr.feature_id  = hf.id
+		GROUP BY h.id
+	) i
+	on hh.id = i.id
+) ff
+ON ee.hotel_id = ff.id
