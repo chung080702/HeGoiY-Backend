@@ -1,6 +1,7 @@
 # app.py
 from flask import Flask, jsonify, request
-from database import connect_to_mysql, execute_query, SQLCompiler, Parameter
+from database import connect_to_mysql, execute_query
+from query import SQLCompiler, Parameter
 
 host = 'localhost' 
 port = 3306  
@@ -48,25 +49,6 @@ def index():
         p.request_hotel_feature = ','.join(map(str, hotelServices)) if len(hotelServices) > 0 else 'NULL'
         p.request_star = str(star)
 
-        print(p.request_view)
-        print(p.request_double_bed)
-        print(p.request_single_bed)
-        print(p.request_sofa_bed)
-        print(p.request_king_bed)
-        print(p.request_queen_bed)
-        print(p.request_super_king_bed)
-        print(p.request_semi_double_bed)
-        print(p.request_bunk_bed)
-        print(p.request_japanese)
-        print(p.request_price_low)
-        print(p.request_price_high)
-        print(p.request_room_facility)
-        print(p.request_room_service)
-        print(p.request_longtitude)
-        print(p.request_latitude)
-        print(p.request_hotel_feature)
-        print(p.request_star)
-
         p.processSpecial()
         query = s.compile(p)
         queries = query.split(';')
@@ -74,11 +56,18 @@ def index():
         execute_query(connection, queries[0])
         execute_query(connection, queries[1])
         result = execute_query(connection, queries[2])
+        execute_query(connection, queries[3])
+        execute_query(connection, queries[4])
         
-        print(len(queries))
-
+        hotels = []
         if result:
-            print(result)
+            hotels = [{"id": row[0], "name": row[1], "address": row[2], "star": row[3], "roomIds": row[4].split(","),"hotelServices": row[5].split(",")} for row in result]
+            for hotel in hotels:
+                hotel["rooms"] = []
+                for roomId in hotel["roomIds"]:
+                    roomResult = execute_query(connection, f"SELECT * FROM rooms WHERE id={roomId}")
+                   
+                    
             return jsonify({"hotels": result})
         else:
             return jsonify({"message":  "No hotel"})
