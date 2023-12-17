@@ -2,6 +2,7 @@
 from flask import Flask, jsonify, request
 from database import connect_to_mysql, execute_query
 from query import SQLCompiler, Parameter
+from flask_cors import CORS
 
 host = 'localhost' 
 port = 3306  
@@ -10,9 +11,10 @@ password = 'my_password'
 database = 'my_database'
 
 app = Flask(__name__)
+cors = CORS(app, resources={"/api/*": {"origin": "http://localhost:3000"}})
 
 # Lấy 5 hotel đầu tiên
-@app.route('/api/v1/query')
+@app.route('/api/v1/query', methods = ['POST'])
 def index():  
     try:
         data = request.json
@@ -143,7 +145,7 @@ def getMetadata():
         bedTypes = ["single_bed","double_bed","sofa_bed","king_bed","queen_bed","super_king_bed","semi_double_bed","bunk_bed","japanese_futon"]
 
         roomViews = []
-        roomViewsQuery = execute_query(connection, "SELECT DISTINCT view FROM rooms")
+        roomViewsQuery = execute_query(connection, "SELECT DISTINCT view FROM rooms WHERE view IS NOT NULL")
         if roomViewsQuery:
             roomViews = [row[0] for row in roomViewsQuery]
 
