@@ -63,7 +63,15 @@ def index():
         
         hotels = []
         if result:
-            hotels = [{"id": row[0], "name": row[1], "address": row[2], "star": row[3], "roomIds": row[4].split(","),"hotelServices": row[5].split(",")} for row in result]
+            hotels = [{
+                        "id": row[0], 
+                        "name": row[1], 
+                        "address": row[2], 
+                        "star": row[3], 
+                        "roomIds": row[4].split(","),
+                        "hotelServices": row[5].split(',') if len(row[5])>0 else None
+                       } 
+                       for row in result]
             for hotel in hotels:
                 hotel["rooms"] = []
                 for roomId in hotel["roomIds"]:
@@ -93,23 +101,23 @@ def index():
                         row = roomResult[0]
                         
                         room =  {
-                                "id": row[0] or 'NULL',
-                                "view": row[3] or 'NULL',
+                                "id": row[0] ,
+                                "view": row[3] ,
                                 "beds": {
-                                    "single_bed": row[4] or 'NULL',
-                                    "king_bed":row[7] or 'NULL',
-                                    "double_bed":row[8] or 'NULL',
-                                    "queen_bed":row[9] or 'NULL',
-                                    "super_king_bed":row[12] or 'NULL',
-                                    "semi_double_bed":row[13]or 'NULL',
-                                    "sofa_bed":row[14] or 'NULL',
-                                    "bunk_bed":row[15] or 'NULL',
-                                    "japanese_futon":row[16] or 'NULL',
+                                    "single_bed": row[4],
+                                    "king_bed":row[7],
+                                    "double_bed":row[8],
+                                    "queen_bed":row[9],
+                                    "super_king_bed":row[12],
+                                    "semi_double_bed":row[13],
+                                    "sofa_bed":row[14] ,
+                                    "bunk_bed":row[15] ,
+                                    "japanese_futon":row[16],
                                 },
-                                "cheapest_price":row[5] or 'NULL',
-                                "before_discount_price":row[6] or 'NULL',
-                                "services": row[18].split(',') if row[18] else  'NULL',
-                                "facilities": row[20].split(',') if row[20] else 'NULL'
+                                "cheapest_price":row[5],
+                                "before_discount_price":row[6] ,
+                                "services": row[18].split(',') if row[18] else  None,
+                                "facilities": row[20].split(',') if row[20] else None
                             }
                         
                         hotel["rooms"].append(room)
