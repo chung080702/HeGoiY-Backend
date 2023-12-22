@@ -1,7 +1,7 @@
 # app.py
 from flask import Flask, jsonify, request
 from database import connect_to_mysql, execute_query
-from query import SQLCompiler, Parameter
+from query import Parameter, master_compiler
 from flask_cors import CORS
 
 host = 'localhost' 
@@ -16,6 +16,7 @@ cors = CORS(app, resources={"/api/*": {"origin": "http://localhost:3000"}})
 # Lấy 5 hotel đầu tiên
 @app.route('/api/v1/query', methods = ['POST'])
 def index():  
+    queries = None
     try:
         data = request.json
         latitude = data["latitude"]
@@ -29,7 +30,6 @@ def index():
         beds = data["beds"]
         star = data["star"]
 
-        s = SQLCompiler()
         p = Parameter() 
         
         p.request_view = str(roomView)
@@ -46,13 +46,13 @@ def index():
         p.request_price_high = priceEnd
         p.request_room_facility = ','.join(map(str, roomFacilities)) if len(roomFacilities) > 0 else 'NULL'
         p.request_room_service =  ','.join(map(str, roomServices)) if len(roomServices) > 0 else 'NULL'
-        p.request_longtitude = str(longitude)
+        p.request_longitude = str(longitude)
         p.request_latitude = str(latitude)
         p.request_hotel_feature = ','.join(map(str, hotelServices)) if len(hotelServices) > 0 else 'NULL'
         p.request_star = str(star)
 
         p.processSpecial()
-        query = s.compile(p)
+        query = master_compiler.compile(p)
         queries = query.split(';')
 
         execute_query(connection, queries[0])
@@ -60,7 +60,7 @@ def index():
         execute_query(connection, queries[2])
         execute_query(connection, queries[3])
         result = execute_query(connection, queries[4])
-        
+       
         hotels = []
         if result:
             hotels = [{
@@ -122,13 +122,17 @@ def index():
                         
                         hotel["rooms"].append(room)
                   
-                    
-                    
+                   
             return jsonify({"hotels": hotels})
         else:
             return jsonify({"message":  "No hotel"})
     except:
         return jsonify({'error': 'Invalid JSON data'}), 400  # Bad Request
+    finally:
+        if queries != None:
+            execute_query(connection, queries[5])
+            execute_query(connection, queries[6])
+            execute_query(connection, queries[7])
 
 # Lấy 5 hotel đầu tiên
 @app.route('/api/v1/metadata')
