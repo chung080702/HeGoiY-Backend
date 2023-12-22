@@ -13,7 +13,72 @@ database = 'my_database'
 app = Flask(__name__)
 cors = CORS(app, resources={"/api/*": {"origin": "http://localhost:3000"}})
 
-# Lấy 5 hotel đầu tiên
+def to_bed_object(str: str):
+    res={}
+    arr = str.split(',')
+    for item in arr:
+        [name,count] = item.split('-')
+        res[name] = int(count)
+    return res
+
+@app.route('/api/v1/test', methods = ['POST'])
+def test():
+    try:
+        p = {
+            'request_room_service': ','.join(map(str, [11,6,8,10])),
+            'request_room_facility': ','.join(map(str,[2686,203,204,209,30,222,141,230,109,44,25,145,85,2679,143,2650,223,227,231,2652,49,217,275,147,41,40,86,2666,29,276,2653,99,228,2665,2685,232,210,213,33,87,2687,278,280,279,2383,34,101,221,2656,2644,277]))
+        }
+        
+        res = execute_query(connection, f""" 
+                    SELECT * from 
+                    (   SELECT * 
+                        from rooms r
+                        LIMIT 5
+                    ) r 
+                    LEFT JOIN
+                    (   SELECT r.id, GROUP_CONCAT(rf.name) as service_names  
+                        FROM rooms r, room_feature_relations rfr, room_features rf  
+                        WHERE r.id = rfr.room_id AND rf.id = rfr.feature_id AND rfr.feature_id in ({p["request_room_service"]}) 
+                        GROUP BY r.id
+                    ) s
+                    ON r.id = s.id
+                    LEFT JOIN 
+                    (   SELECT r.id, GROUP_CONCAT(rf.name) as facilities_names 
+                        FROM rooms r, room_facility_relations rfr, room_facilities rf  
+                        WHERE r.id = rfr.room_id AND rf.id = rfr.facility_id AND rfr.facility_id in ({p['request_room_facility']}) 
+                        GROUP BY r.id
+                    ) f
+                    ON r.id = f.id
+                    LEFT JOIN 
+                    (   SELECT r.id, GROUP_CONCAT(CONCAT(b.name, '-', rbr.count)) as facilities_names 
+                        FROM rooms r, room_bed_relations rbr, beds b  
+                        WHERE r.id = rbr.room_id AND b.id = rbr.bed_id
+                        GROUP BY r.id
+                    ) b
+                    ON r.id = b.id
+                    """)
+        
+        rooms = []
+        if res:
+            rooms = [
+                        {
+                            "id": row[0], 
+                            "before_discount_price": row[1],
+                            "cheapest_price": row[2],
+                            "image_url": row[4],
+                            "name": row[5],
+                            "view": row[6],
+                            "services": row[8].split(',') if row[7] else  None,
+                            "facilities": row[10].split(',') if row[8] else  None,
+                            "beds": to_bed_object(row[12]) if row[9] else None
+                        } 
+                        for row in res
+                    ]
+        return jsonify({"rooms": rooms})
+    except:
+        return jsonify({'error': 'Invalid JSON data'}), 400
+      
+
 @app.route('/api/v1/query', methods = ['POST'])
 def index():  
     try:
@@ -132,7 +197,7 @@ def index():
 
 # Lấy 5 hotel đầu tiên
 @app.route('/api/v1/metadata')
-def getMetadata():  
+def get_metadata():  
     try:
         roomServices = []
         roomServicesQuery = execute_query(connection, "SELECT * FROM room_features")
@@ -150,10 +215,14 @@ def getMetadata():
             hotelServices = [{"id": row[0], "name": row[1]} for row in hotelServicesQuery]
         
 
-        bedTypes = ["single_bed","double_bed","sofa_bed","king_bed","queen_bed","super_king_bed","semi_double_bed","bunk_bed","japanese_futon"]
+        bedTypes = []
+        bedTypesQuery = execute_query(connection,"SELECT * FROM beds")
+        if bedTypesQuery:
+            bedTypes = [{"id": row[0], "name": row[1]} for row in bedTypesQuery]
+
 
         roomViews = []
-        roomViewsQuery = execute_query(connection, "SELECT DISTINCT view FROM rooms WHERE view IS NOT NULL")
+        roomViewsQuery = execute_query(connection, "SELECT DISTINCT view FROM rooms WHERE view IS NOT NULL AND view != ''")
         if roomViewsQuery:
             roomViews = [row[0] for row in roomViewsQuery]
 
