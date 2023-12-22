@@ -66,7 +66,7 @@ CREATE TABLE :table_topsis AS
     ON h.id = sercount.id
 );
 
-SELECT rnk.hotel_id as hotelId, name, address, star_rating as star, roomIds, COALESCE(service_names, '') as hotelServices
+SELECT rnk.hotel_id as hotelId, name, address, star_rating as star, roomIds, COALESCE(service_names, ''), image_url as hotelServices
 FROM
 (
     SELECT hotel_id, dw/(dw+db) as topsis_score 

@@ -1,14 +1,15 @@
 # app.py
 from flask import Flask, jsonify, request
+import traceback
 from database import connect_to_mysql, execute_query
 from query import Parameter, master_compiler
 from flask_cors import CORS
 
 host = 'localhost' 
 port = 3306  
-user = 'my_user'
-password = 'my_password'
-database = 'my_database'
+user = 'annk'
+password = '1'
+database = 'dss2'
 
 app = Flask(__name__)
 cors = CORS(app, resources={"/api/*": {"origin": "http://localhost:3000"}})
@@ -72,10 +73,10 @@ def index():
                         "hotelServices": row[5].split(',') if len(row[5])>0 else None
                        } 
                        for row in result]
+
             for hotel in hotels:
                 hotel["rooms"] = []
                 for roomId in hotel["roomIds"]:
-                    
                     roomResult = execute_query(connection, f""" 
                     SELECT * from 
                     (   SELECT * 
@@ -127,6 +128,7 @@ def index():
         else:
             return jsonify({"message":  "No hotel"})
     except:
+        print(traceback.format_exc())
         return jsonify({'error': 'Invalid JSON data'}), 400  # Bad Request
     finally:
         if queries != None:
