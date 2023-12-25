@@ -62,6 +62,7 @@ def index():
 
         p.processSpecial()
         query = master_compiler.compile(p)
+        print(query)
         queries = query.split(';')
 
         execute_query(connection, queries[0])
@@ -139,10 +140,13 @@ def index():
         print(traceback.format_exc())
         return jsonify({'error': 'Invalid JSON data'}), 400  # Bad Request
     finally:
-        if queries != None:
-            execute_query(connection, queries[5])
-            execute_query(connection, queries[6])
-            execute_query(connection, queries[7])
+        pass
+        ###
+        #if queries != None:
+        #    execute_query(connection, queries[5])
+        #    execute_query(connection, queries[6])
+        #    execute_query(connection, queries[7])
+        ###
 
 # Lấy 5 hotel đầu tiên
 @app.route('/api/v1/metadata')

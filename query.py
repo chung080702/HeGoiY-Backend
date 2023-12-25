@@ -69,7 +69,7 @@ CREATE TABLE :table_topsis AS
 SELECT rnk.hotel_id as hotelId, name, address, star_rating as star, roomIds, COALESCE(service_names, ''), image_url as hotelServices
 FROM
 (
-    SELECT hotel_id, dw/(dw+db) as topsis_score 
+    SELECT hotel_id, db/(dw+db) as topsis_score 
     from (
         SELECT 
             id as hotel_id, 
@@ -201,20 +201,20 @@ master_compiler = SQLCompiler(master_template)
 class Parameter:
     def __init__(self):
         #super parameter when calculate room score
-        self.s_fa = 1        #facility
-        self.s_fe = 1        #feature
-        self.s_vi = 1        #view
-        self.s_pr = 1        #price
-        self.s_be = 1        #bed
-        self.s_bed_alpha = 1        #bed
-        self.s_bed_beta = 1        #bed
-        self.s_bed_base = 1        #bed
+        self.s_fa = 0.05         #facility
+        self.s_fe = 0.05        #feature
+        self.s_vi = 0.1        #view
+        self.s_pr = 0.7        #price
+        self.s_be = 0.1        #bed
+        self.s_bed_alpha = 0.15        #bed
+        self.s_bed_beta = 0.4        #bed
+        self.s_bed_base = 0.7        #bed
 
         #super parameter when normalize hotel table for topsis
-        self.s_topsis_room = 1
-        self.s_topsis_services= 1
-        self.s_topsis_distance= 1
-        self.s_topsis_star= 1
+        self.s_topsis_room = 0.15
+        self.s_topsis_services= 0.1
+        self.s_topsis_distance= 0.75
+        self.s_topsis_star= 0.05
 
         #request input
         self.request_view = 'NULL'
@@ -241,7 +241,7 @@ class Parameter:
         self.k_epsilon = 0.000000000001
         self.k_offset = 0
         self.k_limit = 10
-        self.k_dist_ac = 2000
+        self.k_dist_ac = 1500
         self.k_star_ac = 1
         self.k_earth_r = 6371000
 
